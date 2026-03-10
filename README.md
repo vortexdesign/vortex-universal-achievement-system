@@ -4,7 +4,7 @@ A clean universal achievement system for GZDoom/UZDoom by Vortex.
 Inspired by Blade of Agony, Stupid Achievements, GZ_Goalz, and GZAchievementsPOC.
 
 - Pure ZScript or ZScript + ACS via the included bridge (`ACHIEVEMENTS_BRIDGE_ACS.txt`)
-- Sibling to [Vortex's Universal Objective System (VUOS)](../VUOS/) — same design language, zero shared code, fully standalone
+- Sibling to [Vortex's Universal Objective System (VUOS)](https://github.com/vortexdesign/vortex-universal-objective-system) — same design language, zero shared code, fully standalone
 - Full options menu under **Options > Universal Achievements**
 
 ## License
@@ -435,3 +435,4 @@ VUAS_AchievementHandler.AddAchievement(
 **Compatibility**
 - Runs alongside VUOS with no conflicts (Order 10 vs Order 0)
 - All keybinds rebindable under Options > Customize Controls > Achievements
+
