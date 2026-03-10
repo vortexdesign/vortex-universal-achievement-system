@@ -1,0 +1,173 @@
+// ============================================================================
+// achievements_bridge.acs
+// Minimal ACS bridge for calling ZScript achievements from linedefs/buttons
+//
+// This is a tiny wrapper - all logic stays in ZScript!
+//
+// NOTE ON PARAMETER TYPES: Script parameters declared as "int" that receive
+// string arguments (like achID) are actually ACS string table references.
+// ACS stores strings in an internal table and passes the integer index.
+// ScriptCall automatically resolves these to ZScript String parameters.
+// This is standard ACS behavior, not a type mismatch.
+// ============================================================================
+
+#library "achievements_bridge"
+#include "zcommon.acs"
+
+// ============================================================================
+// Unlock an achievement immediately
+// Usage: Linedef calls ACS_Execute with script "AchUnlock"
+//        Arg1 = achievement ID string (e.g. "kill_100_imps")
+// ============================================================================
+script "AchUnlock" (int achID)
+{
+    ScriptCall("VUAS_AchievementHandler", "Unlock", achID);
+}
+
+// ============================================================================
+// Increment achievement progress by a given amount
+// Usage: Linedef calls ACS_Execute with script "AchIncrementProgress"
+//        Arg1 = achievement ID string
+//        Arg2 = amount to increment (default 1 if 0 or omitted)
+// ============================================================================
+script "AchIncrementProgress" (int achID, int amount)
+{
+    if (amount <= 0) amount = 1;
+    ScriptCall("VUAS_AchievementHandler", "IncrementProgress", achID, amount);
+}
+
+// ============================================================================
+// Set achievement progress to an exact value
+// Usage: Linedef calls ACS_Execute with script "AchUpdateProgress"
+//        Arg1 = achievement ID string
+//        Arg2 = new progress value
+// ============================================================================
+script "AchUpdateProgress" (int achID, int newValue)
+{
+    ScriptCall("VUAS_AchievementHandler", "UpdateProgress", achID, newValue);
+}
+
+// ============================================================================
+// Check if an achievement is unlocked (stores result in ACS variable)
+// Usage: int unlocked = ScriptCall("VUAS_AchievementHandler", "IsUnlocked", "some_id");
+//        Or use the wrapper script below with ACS_ExecuteWithResult
+// Returns: 1 if unlocked, 0 if locked or not found
+// ============================================================================
+script "AchIsUnlocked" (int achID)
+{
+    int result = ScriptCall("VUAS_AchievementHandler", "IsUnlocked", achID);
+    SetResultValue(result);
+}
+
+// ============================================================================
+// Get current progress count for an achievement
+// Usage: ACS_ExecuteWithResult to get the current count
+// Returns: current progress count (0 if not found)
+// ============================================================================
+script "AchGetProgress" (int achID)
+{
+    int result = ScriptCall("VUAS_AchievementHandler", "GetProgress", achID);
+    SetResultValue(result);
+}
+
+// ============================================================================
+// Get target count for an achievement
+// Usage: ACS_ExecuteWithResult to get the target
+// Returns: target count (0 if not found)
+// ============================================================================
+script "AchGetTargetCount" (int achID)
+{
+    int result = ScriptCall("VUAS_AchievementHandler", "GetTargetCount", achID);
+    SetResultValue(result);
+}
+
+// ============================================================================
+// Clear a single achievement (debug/testing)
+// Usage: Linedef calls ACS_Execute with script "AchClear"
+//        Arg1 = achievement ID string
+// ============================================================================
+script "AchClear" (int achID)
+{
+    ScriptCall("VUAS_AchievementHandler", "ClearAchievement", achID);
+}
+
+// ============================================================================
+// Set hidden state of an achievement
+// Usage: Linedef calls ACS_Execute with script "AchSetHidden"
+//        Arg1 = achievement ID string
+//        Arg2 = 1 to hide, 0 to reveal
+// ============================================================================
+script "AchSetHidden" (int achID, int hidden)
+{
+    ScriptCall("VUAS_AchievementHandler", "SetHidden", achID, hidden);
+}
+
+// ============================================================================
+// Get total number of unlocked achievements
+// Usage: ACS_ExecuteWithResult to get unlocked count
+// Returns: number of unlocked achievements
+// ============================================================================
+script "AchGetUnlockedCount" (void)
+{
+    int result = ScriptCall("VUAS_AchievementHandler", "GetUnlockedCount");
+    SetResultValue(result);
+}
+
+// ============================================================================
+// Get total number of achievements
+// Usage: ACS_ExecuteWithResult to get total count
+// Returns: total number of defined achievements
+// ============================================================================
+script "AchGetTotalCount" (void)
+{
+    int result = ScriptCall("VUAS_AchievementHandler", "GetTotalCount");
+    SetResultValue(result);
+}
+
+// ============================================================================
+// EXAMPLE USAGE IN MAP EDITOR:
+// ============================================================================
+//
+// Button that unlocks "Find the secret weapon":
+//   Linedef Action: ACS_Execute (80)
+//   Script: "AchUnlock"
+//   Arg1: "find_secret_weapon"
+//
+// Switch that increments achievement progress by 1:
+//   Linedef Action: ACS_Execute (80)
+//   Script: "AchIncrementProgress"
+//   Arg1: "activate_3_switches"
+//   Arg2: 1
+//
+// Trigger that sets progress to an exact value:
+//   Linedef Action: ACS_Execute (80)
+//   Script: "AchUpdateProgress"
+//   Arg1: "explore_all_areas"
+//   Arg2: 5
+//
+// Check if achievement is unlocked (conditional logic):
+//   int unlocked = ACS_ExecuteWithResult("AchIsUnlocked", "kill_100_imps");
+//   if (unlocked) { ... }
+//
+// Get progress for display:
+//   int progress = ACS_ExecuteWithResult("AchGetProgress", "collect_secrets");
+//   int target = ACS_ExecuteWithResult("AchGetTargetCount", "collect_secrets");
+//   Log(s:"Progress: ", d:progress, s:" / ", d:target);
+//
+// Get overall completion stats:
+//   int unlocked = ACS_ExecuteWithResult("AchGetUnlockedCount");
+//   int total = ACS_ExecuteWithResult("AchGetTotalCount");
+//   Log(s:"Achievements: ", d:unlocked, s:" / ", d:total);
+//
+// ============================================================================
+// COMPILE WITH:
+// ============================================================================
+//
+// In SLADE: Right Click On ACHIEVEMENTS_BRIDGE_ACS.txt -> Script -> Compile ACS
+// Or use acc.exe: acc ACHIEVEMENTS_BRIDGE_ACS.txt
+//
+// Output: ACHIEVEMENTS_BRIDGE_ACS.o (compiled bytecode)
+// Place the .o file in the ACS/ folder of your pk3/wad.
+// GZDoom loads .o files from ACS/ automatically via LOADACS.
+//
+// ============================================================================

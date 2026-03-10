@@ -1,11 +1,11 @@
-# Vortex's Universal Objective System (VUOS) v0.3.0
+# Vortex's Universal Achievement System (VUAS) v0.1.0
 
-A universal objective and waypoint system for GZDoom/UZDoom mods.
-Inspired by Blade of Agony, Hellscape Navigator, and Cynic Games Minimap.
+A clean universal achievement system for GZDoom/UZDoom by Vortex.
+Inspired by Blade of Agony, Stupid Achievements, GZ_Goalz, and GZAchievementsPOC.
 
-- Pure ZScript or ZScript + ACS via the included bridge (`OBJECTIVES_BRIDGE_ACS.txt`)
-- Compatible with Cynic Games Minimap mod (auto-detected at runtime)
-- Full options menu under **Options > Universal Objectives**
+- Pure ZScript or ZScript + ACS via the included bridge (`ACHIEVEMENTS_BRIDGE_ACS.txt`)
+- Sibling to [Vortex's Universal Objective System (VUOS)](../VUOS/) — same design language, zero shared code, fully standalone
+- Full options menu under **Options > Universal Achievements**
 
 ## License
 
@@ -14,443 +14,424 @@ Inspired by Blade of Agony, Hellscape Navigator, and Cynic Games Minimap.
 
 ## Getting Started (Players)
 
-1. Load the VUOS PK3 file alongside any GZDoom/UZDoom mod
-2. Auto-generated objectives will appear for keys, bosses, exits, kills, and secrets
-3. Customize what gets generated in **Options > Universal Objectives > Auto Objectives**
+1. Load the VUAS PK3 file alongside any GZDoom/UZDoom mod
+2. Achievement toasts will pop up as you play (if the mod defines achievements otherwise there's a few default ones)
+3. Browse unlocked achievements via **Options > Universal Achievements > Browse Achievements**
+4. Customize toast appearance, colors, sounds, and position in the settings menu
 
 ## Getting Started (Modders)
 
-1. Add VUOS to your project's load order
-2. Define custom objectives in `ObjectiveSetup.zs` (subclass of `VUOS_ObjectiveHandler`)
-3. Use `VUOS_AutoObjectives.SuppressMap("MAP01")` on maps where you define your own objectives
-4. Configure settings in-game via **Options > Universal Objectives**
+1. Add VUAS to your project's load order
+2. Create a subclass of `VUAS_AchievementSetup` and override `DefineAchievements()`
+3. Register your subclass in ZMAPINFO (replace `VUAS_AchievementSetup` with your class name)
+4. Achievements persist across maps and game sessions automatically via CVars
 
 ## Features
 
-### Objective Types
-- **TYPE_KILL (0)** — Auto-tracked via `WorldThingDied`
-- **TYPE_DESTROY (1)** — Auto-tracked via `WorldThingDestroyed`
-- **TYPE_COLLECT (2)** — Auto-tracked via inventory polling
-- **TYPE_CUSTOM (3)** — Manual tracking required
+### Achievement Types
+- **ACH_TYPE_BINARY (1)** — Simple unlock (targetCount = 1)
+- **ACH_TYPE_THRESHOLD (0)** — Unlock when currentCount >= targetCount
 
-### Primary & Secondary Objectives
-Objectives are categorized as primary (green header) or secondary (cyan header). Primary objectives can be marked as required for map exit. Secondary objectives are optional challenges.
+### Auto-Tracking Types
+- **TRACK_MANUAL (0)** — Modder calls `IncrementProgress()` or `Unlock()` explicitly
+- **TRACK_KILLS (1)** — Auto-tracked via `WorldThingDied` (optional targetClass filter, replacement-aware)
+- **TRACK_DAMAGE_DEALT (2)** — Auto-tracked via `WorldThingDamaged` (player attacking, replacement-aware)
+- **TRACK_DAMAGE_TAKEN (3)** — Auto-tracked via `WorldThingDamaged` (player receiving, replacement-aware)
+- **TRACK_SECRETS (4)** — Auto-tracked when secrets are found (polls `player.secretcount`)
+- **TRACK_ITEMS (5)** — Auto-tracked when items are collected (polls `player.itemcount`)
+- **TRACK_CUSTOM_EVENT (6)** — Triggered via netevent with matching achievement ID
 
-### Objective Failure & Inverse Objectives
-Objectives can fail explicitly or via the inverse flag. An inverse objective automatically fails when its target count is reached instead of completing (e.g., "Don't destroy 4 barrels").
+### Cumulative vs Per-Map Progress
+Achievements can be cumulative (progress persists across maps, the default) or per-map (progress resets on each new map). Any achievement type can be either.
 
-### Timed Objectives
-Objectives can have a time limit in seconds. A countdown displays on the HUD and the objective auto-fails when time runs out.
+### Hidden / Secret Achievements
+Hidden achievements show as "???" in the browse menu until unlocked. Players can toggle hidden achievement visibility in settings.
 
 ### Skill-Level Filtering
-Each objective has min/max skill level fields (0–4). Objectives outside the current skill range are automatically excluded.
+Each achievement has min/max skill level fields (0-4). Achievements outside the current skill range are automatically excluded from auto-tracking.
 
-### Exit Blocking
-Two modes for preventing map exit until required objectives are complete:
+### Enemy Mod Compatibility
+Class-targeted achievements (kill/damage tracking with a `targetClass`) automatically work with enemy replacement mods. When a mod uses the `replaces` keyword (e.g. `class CyberImp : Actor replaces DoomImp`), VUAS detects this via the engine's replacement chain (`Actor.GetReplacee`) and class inheritance (`is` operator). An achievement targeting `'DoomImp'` will match CyberImp if it replaces or extends DoomImp. Players can load VUAS alongside enemy mods and 3rd party maps without any configuration.
 
-- **Warning mode** (default, no map editing) — Player gets visual/audio feedback when exiting with incomplete required objectives but exit still happens
-- **True exit blocking** (requires map editing) — Edit the exit linedef to use ACS script `CheckObjectivesAndExit` and the exit physically won't work until all required primary objectives are complete
+### Cheat Detection
+When cheats are detected (noclip, god mode, buddha), all cheat-protected in-progress achievements are invalidated for the rest of the session. Already-unlocked achievements are preserved.
+
+### Persistent Storage
+Achievement completion state persists across maps and game sessions via `nosave` CVars in the player's INI file. Data is optionally encoded with Base64+ROT for light obfuscation. In-progress counters survive save/load via a dual-handler pattern (StaticEventHandler + EventHandler mirror).
 
 ### Event Callbacks
-Override these in your `ObjectiveSetup` subclass:
+Override these in your `VUAS_AchievementSetup` subclass:
 ```c
-virtual void OnObjectiveComplete(string objectiveID) {}
-virtual void OnObjectiveFail(string objectiveID) {}
-virtual void OnObjectiveActivate(string objectiveID) {}
-virtual void OnObjectiveReset(string objectiveID) {}
-virtual void OnAllRequiredComplete() {}
+virtual void OnAchievementUnlocked(VUAS_AchievementData ach) {}
+virtual void OnProgressUpdated(VUAS_AchievementData ach, int oldCount, int newCount) {}
+virtual void OnCheatDetected(int playerNum) {}
 ```
 
-## Display Modes
+## Toast Notifications
 
-### HUD Mode (`O` key)
-- Configurable position (top-left, top-right, bottom-left, bottom-right) with fine-tune offsets
-- Shows active/incomplete objectives with progress counters
-- Primary and secondary objectives grouped under colored headers
-- Distance to waypoint objectives displayed inline
-- Completed objectives flash green and fade out
-- Failed objectives flash red and fade out
-- Dims automatically when picking up items (configurable)
+- Procedural or textured rendering style (with fallback)
+- 6 positions: top-right, top-left, bottom-right, bottom-left, top-center, bottom-center
+- Fine-tune X/Y offset adjustment
+- 3 animation types: none, slide (vertical or horizontal), fade
+- SmoothStep easing for smooth animations
+- Dual border layers (outer accent + inner) with customizable colors
+- Configurable scale, opacity, and duration
+- FIFO notification queue for multiple unlocks
+- Icon support with BoA-style dim effect for locked state
 
-### Journal Screen (`J` key)
-- Background image overlay (OBJBG.png)
-- Shows ALL objectives including completed and failed
-- Cursor navigation with Up/Down keys to select objectives
-- Press Enter/Use to toggle tracking on selected objective
-- Scrollable when objectives exceed visible area
-- Two-column layout: descriptions on left, progress on right
+## Achievement Menu
 
-### Compass Ribbon (`C` key to toggle)
-- Horizontal bar at top of screen with cardinal/intercardinal direction labels
-- Objective waypoints shown as colored diamonds (green = primary, cyan = secondary)
-- Distance text below each diamond (configurable)
-- Configurable FOV (45–360°), opacity, scale, and position offsets
-- Procedural or textured rendering style
-- Edge-clamped indicators for waypoints outside visible range
+- Browse all achievements grouped by category
+- Filter: All, Unlocked Only, Locked Only
+- Hidden achievements shown as "???" (toggleable)
+- Unlock timestamps displayed on completed achievements
+- Progress counters on in-progress achievements
+- 7 customizable colors via options menu
+- Opened via `openmenu VUASAchievementBrowse` or keybind
 
-### On-Screen Waypoint Indicators (`I` key to cycle mode)
-- 3D world-to-screen projected diamond indicators pointing to objective locations
-- Distance-based alpha fade and icon scaling
-- Off-screen arrows pointing toward out-of-view waypoints
-- Procedural or textured rendering style
-- Three modes: Always On, Always Off, Toggle with HUD
+## Sound System
 
-### Automap Markers
-- Waypoint objectives appear as markers on the automap
-- Two styles: X markers or numbered (1–9)
-- Color-coded: green (primary), cyan (secondary), grey (untracked), yellow (completed), red (failed)
-- Configurable via options menu
-
-### Automap Legend
-- Objective legend overlay displayed when automap is open
-- Lists active objectives with their marker colors/numbers
-- Configurable scale and show/hide for completed/failed objectives
-
-### Cynic Games Minimap Bridge
-- Auto-detects minimap mod at runtime via class lookup
-- Syncs waypoint objectives to minimap waypoints
-- Zero overhead when minimap is not loaded
+- 4 selectable unlock sounds
+- Per-player playback on all active players
+- Configurable enable/disable
 
 ## Multiplayer / Co-op Notes
 
-VUOS is primarily a single-player system, but its architecture avoids multiplayer desync by design. If your mod supports co-op, here's what you need to know:
+VUAS is primarily a single-player system, but its architecture avoids multiplayer desync by design. If your mod supports co-op, here's what you need to know:
 
-**Shared state** — Objectives are stored on the `EventHandler` instance (server-side), not on any player's pawn. All players share the same objective list, progress, and completion state. If one player kills an imp that completes a kill objective, it completes for everyone.
+**Shared state** — Achievements are stored on the `StaticEventHandler` instance (server-side). All players share the same achievement list, progress, and completion state.
 
-**Per-player rendering** — HUD, journal, compass, and waypoint indicators render per-client using `consoleplayer`. Each player sees distances from their own position, can navigate the journal cursor independently, and has their own CVar settings (HUD position, scale, colors, etc.).
+**Per-player rendering** — Toast notifications and the browse menu render per-client using `consoleplayer`. Each player sees their own CVar settings (position, colors, scale, etc.).
 
-**Sound** — Completion, failure, and exit-blocking sounds play on all active players via `PlaySoundAllPlayers()`. No player misses a notification.
+**Sound** — Unlock sounds play on all active players via `PlaySoundAllPlayers()`. No player misses a notification.
 
-**For modders** — When overriding `NetworkProcess`, use `e.Player` to identify which player triggered the event. Avoid using `consoleplayer` in play-scope code (use `GetFirstPlayer()` or iterate `playeringame[]` instead). All static API methods (`Complete`, `Fail`, `UpdateProgress`, etc.) are multiplayer-safe.
+**For modders** — Avoid using `consoleplayer` in play-scope code (use `GetFirstPlayer()` or iterate `playeringame[]` instead). All static API methods (`Unlock`, `IncrementProgress`, `UpdateProgress`, etc.) are multiplayer-safe.
 
 ## Keybinds
 
-All rebindable under **Options > Customize Controls > Objectives**:
+Rebindable under **Options > Customize Controls > Achievements**:
 
 | Key | Action |
 |-----|--------|
-| `J` | Toggle journal screen |
-| `O` | Toggle HUD objective list |
-| `P` | Cycle HUD position (4 corners) |
-| `I` | Cycle waypoint indicator mode |
-| `C` | Toggle compass ribbon |
+| (unbound) | Open Achievement Menu |
 
 ## API Reference
 
-### Adding Objectives
+### Adding Achievements
 ```c
-// Full parameters
-static void AddObjective(
+// Standard achievement (binary if targetCount=1, threshold otherwise)
+static void AddAchievement(
+    String id,                      // Unique key (e.g. "kill_100_imps")
+    String title,                   // Display name
     String desc,                    // Description text
-    name target = '',               // Actor class for auto-tracking
-    int count = 1,                  // Required count
-    int objType = 0,                // 0=kill, 1=destroy, 2=collect, 3=custom
-    bool hidden = false,            // Hidden from HUD
-    bool persist = true,            // Survive map changes
-    bool inverse = false,           // Fail on target instead of complete
-    int timeLimit = 0,              // Time limit in seconds (0=none)
-    bool isPrimary = true,          // Primary or secondary
-    int requiredToComplete = -1,    // Required for exit (-1=auto: primary=yes, secondary=no)
-    int minSkillLevel = 0,          // Minimum skill (0-4)
-    int maxSkillLevel = 4,          // Maximum skill (0-4)
-    double wpX = 0, double wpY = 0, double wpZ = 0  // Waypoint position
+    String category,                // For menu grouping: "combat", "exploration", etc.
+    int targetCount,                // Threshold to unlock (1 for binary)
+    int trackingType = TRACK_MANUAL,// Auto-tracking type
+    name targetClass = '',          // Actor class filter for kill/damage tracking
+    String icon = "ACHVMT00",       // Graphic name (dimmed when locked, full-color when unlocked)
+    bool isHidden = false,          // Hidden until unlocked
+    bool isCumulative = true,       // Progress persists across maps
+    bool cheatProtected = true,     // Invalidated when cheats detected
+    int minSkill = 0,               // Minimum skill level (0-4)
+    int maxSkill = 4                // Maximum skill level (0-4)
 )
-
-// Convenience methods
-static void AddPrimaryObjective(...)    // isPrimary = true
-static void AddSecondaryObjective(...)  // isPrimary = false
-static void AddPrimaryCollectObjective(desc, target, count, hidden, persist, requiredToComplete, minSkillLevel, maxSkillLevel, wpX, wpY, wpZ)    // objType=2, isPrimary=true
-static void AddSecondaryCollectObjective(desc, target, count, hidden, persist, requiredToComplete, minSkillLevel, maxSkillLevel, wpX, wpY, wpZ)  // objType=2, isPrimary=false
 ```
 
 ### Progress & Completion
 ```c
-static void UpdateProgress(String desc, int progress)  // Set absolute progress
-static void IncrementProgress(String desc, int amount)  // Add to progress
-static void Complete(String desc)                        // Force complete
-static void Fail(String desc)                            // Force fail
-static void ResetObjective(String desc)                  // Reset to active
-static void RemoveObjective(String desc)                 // Delete entirely
-```
-
-### Waypoints
-```c
-static void SetWaypoint(String desc, double x, double y, double z)
-static void ClearWaypoint(String desc)
+static void Unlock(String id)                       // Force unlock
+static void IncrementProgress(String id, int amount) // Add to progress
+static void UpdateProgress(String id, int newValue)  // Set exact progress
+static void SetHidden(String id, bool hidden)         // Show or hide achievement
+static void ClearAchievement(String id)              // Clear to locked
+static void ClearAll()                               // Clear all achievements
+static void UnlockAll()                              // Unlock all (debug)
 ```
 
 ### Queries
 ```c
-static bool Exists(string objectiveID)
-static bool IsComplete(string objectiveID)
-static bool IsActive(string objectiveID)
-static bool HasFailed(string objectiveID)
-static int GetProgress(string objectiveID)
-static int GetMaxProgress(string objectiveID)
-static bool HasIncompleteRequiredObjectives()
-static VUOS_ObjectiveData FindByDescription(String desc)
-static VUOS_ObjectiveData FindByTargetClass(name targetClass, int objType)
-```
-
-### Utility
-```c
-static void SetHidden(String desc, bool hidden)
-static void ClearAll()
+static VUAS_AchievementData FindByID(String id)     // Get achievement data
+static bool IsUnlocked(String id)                    // Check completion
+static int GetProgress(String id)                    // Get current count
+static int GetTargetCount(String id)                 // Get target count
+static int GetUnlockedCount()                        // Total unlocked
+static int GetTotalCount()                           // Total defined
 ```
 
 ## Console Commands
 ```
-obj_help           - Show all commands
-obj_list           - List all objectives with status and skill info
-obj_clear          - Clear all objectives
-obj_test           - Add test objectives
-obj_complete_test  - Complete first active objective
-obj_complete_all   - Complete ALL active objectives
+ach_help                          - Show all commands
+ach_list                          - List all achievements with status
+ach_debug                         - Toggle debug output
+ach_clear_all                     - Clear all achievements
+ach_unlock_all                    - Unlock all achievements
+netevent ach_info <index>         - Show detail for achievement #
+netevent ach_unlock <index>       - Force unlock achievement #
+netevent ach_clear <index>        - Clear achievement #
+netevent ach_progress <index> <n> - Add progress to achievement #
 ```
 
 ## ACS Bridge Scripts
 ```
-CompleteObjective(objName)           - Complete an objective
-UpdateObjectiveProgress(objName, n)  - Set progress
-SwitchActivated()                    - Increment switch counter
-SecretFound()                        - Increment secret counter
-CheckObjectivesAndExit()             - Exit blocking check
-FailObjective(objName)               - Fail an objective
-IncrementObjective(objName)          - Increment progress by 1
-SetObjectiveHidden(objName, flag)    - Show/hide objective
-ResetObjective(objName)              - Reset to active
-SetObjectiveWaypoint(objName, x,y,z) - Set waypoint position
+AchUnlock(achID)                  - Unlock an achievement
+AchIncrementProgress(achID, n)    - Increment progress by n
+AchUpdateProgress(achID, n)       - Set progress to exact value
+AchIsUnlocked(achID)              - Check if unlocked (returns 0/1)
+AchGetProgress(achID)             - Get current progress count
+AchGetTargetCount(achID)          - Get target count
+AchClear(achID)                   - Clear a single achievement
+AchSetHidden(achID, hidden)       - Set hidden state (1=hide, 0=reveal)
+AchGetUnlockedCount()             - Get total unlocked count
+AchGetTotalCount()                - Get total achievement count
 ```
 
 ## Architecture
 ```
-VUOS_ObjectiveData (Plain class)
-  - objectiveDescription, targetClass, targetCount, currentCount
-  - objectiveType, isCompleted, hasFailed, isInverse, isHidden
-  - isPrimary, requiredToComplete, persist, mapName
-  - timeLimit, timeRemaining, timer
+VUAS_AchievementData (Plain class)
+  - achievementID, title, description, category
+  - achievementType, targetCount, currentCount
+  - isUnlocked, isHidden, unlockTime, unlockMap
+  - targetClass, trackingType, isCumulative
   - minSkillLevel, maxSkillLevel
-  - waypointPos, hasWaypoint, isTracked, cachedDistances
-  - markerActor (automap marker reference)
+  - icon
+  - cheatProtected, invalidated
 
-VUOS_ObjectiveHandler (Abstract EventHandler)
-  - objectives[] storage, hub persistence, auto-tracking
-  - Static API methods, ACS bridge functions
-  - Event callbacks (OnObjectiveComplete/Fail/Activate)
-  - Automap marker management
+VUAS_AchievementHandler (StaticEventHandler)
+  - achievements[] registry, static API
+  - Auto-tracking hooks (kills, damage, secrets, items, custom events)
+  - Persistence (Base64+ROT encode/decode, 4-CVar split)
+  - Cheat detection, sound playback
+  - Dual-handler sync with PersistentTracker
 
-VUOS_ObjectiveSetup (extends VUOS_ObjectiveHandler)
-  - Your mod's objective definitions per map
+VUAS_AchievementSetup (StaticEventHandler)
+  - Modder subclass: override DefineAchievements()
+  - Centralized restore sequence on WorldLoaded
+  - Event callbacks (OnAchievementUnlocked, OnProgressUpdated, etc.)
 
-VUOS_AutoObjectives (EventHandler)
-  - Scans maps at load for keys, bosses, exits, kills, secrets
-  - Per-category CVar toggles with primary/secondary priority
-  - Auto-waypoints, per-map suppression, mid-map regeneration
+VUAS_PersistentTracker (EventHandler)
+  - Save/load mirror for in-progress counters
+  - Parallel arrays serialized with savegames
 
-VUOS_ObjectiveRenderer (EventHandler)
-  - HUD mode, journal screen, notifications
-  - Pickup fade, completion/failure message queues
-  - Journal cursor navigation and tracking toggle
+VUAS_AchievementRenderer (EventHandler)
+  - RenderOverlay dispatch, SystemTime relay
+  - Notification FIFO queue management
 
-VUOS_ObjectiveCompass (UI class)
-  - Compass ribbon rendering with cardinal labels
-  - Waypoint diamond indicators with distance
+VUAS_AchievementNotification (UI class)
+  - Toast popup drawing with animations
+  - 6 positions, slide/fade/none, SmoothStep easing
 
-VUOS_ObjectiveWaypoints (UI class)
-  - 3D world-to-screen waypoint projection
-  - Off-screen arrow indicators
+VUAS_AchievementBrowseMenu (OptionMenu subclass)
+  - Category grouping, filters, hidden toggle
+  - CVar-driven colors, timestamps, progress display
 
-VUOS_ObjectiveAutomap (MapMarker actor)
-  - Automap marker sprites (X or numbered)
-
-VUOS_ObjectiveAutomapOverlay (UI class)
-  - Automap legend rendering
-
-VUOS_ObjectiveMinimapBridge (EventHandler)
-  - Cynic Games Minimap sync
-
-VUOS_ObjectiveCommands (EventHandler)
-  - Console command processing
+VUAS_AchievementCommands (StaticEventHandler)
+  - Console command processing via netevent
 ```
 
 ## Examples
 
-### Example 1: Kill Objective with Waypoint (Auto-tracked)
+### Example 1: Basic Kill Tracking
 ```c
-class MyObjectiveSetup : VUOS_ObjectiveHandler
+class MyAchievements : VUAS_AchievementSetup
 {
-    override void WorldLoaded(WorldEvent e)
+    override void DefineAchievements()
     {
-        super.WorldLoaded(e);
-        if (level.MapName ~== "MAP01")
-        {
-            VUOS_ObjectiveHandler.AddObjective("Kill 10 Imps", 'DoomImp', 10, 0,
-                false, true, false, 0, true, -1, 0, 4, 1024, 2048, 0);
-            //                                          waypoint at X=1024 Y=2048
-        }
+        // Binary: unlocks on first kill of any monster
+        VUAS_AchievementHandler.AddAchievement(
+            "first_blood", "First Blood",
+            "Kill your first enemy", "combat",
+            1, TRACK_KILLS
+        );
+
+        // Threshold: kill 100 of any monster (cumulative across maps)
+        VUAS_AchievementHandler.AddAchievement(
+            "kill_100", "Century",
+            "Kill 100 enemies", "combat",
+            100, TRACK_KILLS
+        );
+
+        // Targeted: only counts DoomImp kills
+        VUAS_AchievementHandler.AddAchievement(
+            "kill_imps", "Imp Slayer",
+            "Kill 50 Imps", "combat",
+            50, TRACK_KILLS, 'DoomImp'
+        );
     }
 }
 ```
 
-### Example 2: Inverse Objective (Fail on Target)
+### Example 2: Skill-Filtered Achievement
 ```c
-// Automatically fails when 4 barrels are destroyed
-VUOS_ObjectiveHandler.AddSecondaryObjective("Don't destroy 4 barrels",
-    'ExplosiveBarrel', 4, 1, false, true, true);
-//                                        ^ inverse = true
+// Only available on Ultra-Violence (skill 3) and Nightmare (skill 4)
+VUAS_AchievementHandler.AddAchievement(
+    "uv_warrior", "Ultraviolent",
+    "Kill 25 enemies on UV or Nightmare", "challenge",
+    25, TRACK_KILLS,
+    '',         // targetClass (any monster)
+    "ACHVMT00", // icon
+    false,      // isHidden
+    true,       // isCumulative
+    true,       // cheatProtected
+    3,          // minSkill (Ultra-Violence)
+    4           // maxSkill (Nightmare)
+);
 ```
 
-### Example 3: Timed Objective
+### Example 3: Hidden Achievement with Callback
 ```c
-// Must complete within 60 seconds or it fails
-VUOS_ObjectiveHandler.AddObjective("Reach the exit in 60 seconds", '', 1, 3,
-    false, true, false, 60);
-//                      ^ timeLimit = 60 seconds
-```
-
-### Example 4: Event Callbacks
-```c
-class MyObjectiveSetup : VUOS_ObjectiveHandler
+override void DefineAchievements()
 {
-    override void OnObjectiveComplete(string objectiveID)
-    {
-        if (objectiveID == "Find the red key")
-        {
-            // Reveal a hidden objective when the key is found
-            VUOS_ObjectiveHandler.SetHidden("Escape the base", false);
-        }
-    }
+    VUAS_AchievementHandler.AddAchievement(
+        "hidden_gem", "Hidden Gem",
+        "Discover the hidden achievement", "secret",
+        1, TRACK_MANUAL,
+        '', true  // isHidden = true
+    );
+}
 
-    override void OnObjectiveFail(string objectiveID)
-    {
-        if (objectiveID == "Protect the reactor")
-            Console.Printf("The reactor has been destroyed!");
-    }
+override void OnAchievementUnlocked(VUAS_AchievementData ach)
+{
+    if (ach.achievementID == "hidden_gem")
+        Console.Printf("You found the hidden gem!");
+}
+```
 
-    override void OnObjectiveReset(string objectiveID)
-    {
-        if (objectiveID == "Survive the ambush")
-            Console.Printf("Objective reset - try again!");
-    }
+### Example 4: Custom Event Tracking
+```c
+// In DefineAchievements:
+VUAS_AchievementHandler.AddAchievement(
+    "use_turrets", "Turret Master",
+    "Use turrets 5 times", "combat",
+    5, TRACK_CUSTOM_EVENT
+);
 
-    override void OnAllRequiredComplete()
+// From ZScript (anywhere in play scope):
+EventHandler.SendNetworkEvent("vuas_event:use_turrets", 1);
+
+// Or from ACS:
+ScriptCall("VUAS_AchievementHandler", "IncrementProgress", "use_turrets", 1);
+```
+
+### Example 5: ACS Linedef Trigger
+```c
+// Button in map editor that unlocks an achievement:
+//   Linedef Action: ACS_Execute (80)
+//   Script: "AchUnlock"
+//   Arg1: "find_secret_weapon"
+
+// Check completion for conditional logic:
+script "CheckAndOpen" (void)
+{
+    int unlocked = ACS_ExecuteWithResult("AchIsUnlocked", "find_secret_weapon");
+    if (unlocked)
     {
-        Console.Printf("All required objectives complete! Exit is unlocked!");
+        Door_Open(1, 64);
     }
 }
 ```
 
-### Example 5: Using Trigger Actors
+### Example 6: VUOS Integration (Conditional Unlock)
 ```c
-class ExitTrigger : Actor
-{
-    Default { +NOBLOCKMAP; +NOGRAVITY; }
-    States { Spawn: TNT1 A -1; Stop; }
+// Requires both VUAS and VUOS loaded.
+// Override OnObjectiveCompleted in your VUOS_ObjectiveSetup subclass
+// to trigger VUAS achievements based on objective completion conditions.
 
-    override void Touch(Actor toucher)
+class MyObjectives : VUOS_ObjectiveSetup
+{
+    override void OnObjectiveCompleted(VUOS_ObjectiveData obj)
     {
-        if (toucher && toucher.player)
-        {
-            VUOS_ObjectiveHandler.Complete("Reach the exit");
-            Destroy();
-        }
+        // Unlock "Avoid Imps" if the player completed the map objective
+        // without killing any imps (tracked by your own variable)
+        if (obj.objectiveID == "clear_map01" && myImpKillCount == 0)
+            VUAS_AchievementHandler.Unlock("avoid_imps");
     }
 }
+
+// In your VUAS_AchievementSetup subclass:
+VUAS_AchievementHandler.AddAchievement(
+    "avoid_imps", "Pacifist (Imps)",
+    "Complete a map without killing any Imps", "challenge",
+    1, TRACK_MANUAL
+);
+```
+
+### Example 7: Custom Event (Melee Attack)
+```c
+// Fire a netevent from your weapon's ZScript when a melee attack lands.
+// VUAS picks it up via TRACK_CUSTOM_EVENT with matching achievement ID.
+
+// In your Fist/melee weapon's Fire or Attack state:
+EventHandler.SendNetworkEvent("vuas_event:first_melee", 1);
+
+// In your VUAS_AchievementSetup subclass:
+VUAS_AchievementHandler.AddAchievement(
+    "first_melee", "Up Close and Personal",
+    "Land your first melee attack", "combat",
+    1, TRACK_CUSTOM_EVENT
+);
 ```
 
 ---
 
 ## Changelog
 
-### v0.3.0 (February 2026)
+### v0.1.0 (March 2026)
 
-**Auto-Generate Objectives**
-- Automatic objective generation for keys, puzzle items, bosses, exits, secret exits, kills, and secrets
-- Per-category toggle with Primary/Secondary/Off priority selection
-- Auto-waypoints for keys, puzzle items, bosses, and exit linedefs
-- Optional secret sector waypoints (disabled by default to avoid spoilers)
-- Kill tracking with fixed or dynamic count modes
-- Singular/plural secret descriptions ("Find the secret" vs "Find all secrets")
-- CVar change detection with mid-map regeneration (preserves current progress)
-- Per-map suppression API (`SuppressMap`) for maps with custom objectives
-- Settings applied after closing menu (uses deferred CVar caching to avoid false triggers)
+**Core System**
+- Achievement data model with binary and threshold types
+- StaticEventHandler-based handler with session-lifetime persistence
+- Dual-handler pattern for save/load of in-progress counters (BoA pattern)
+- Static API for all achievement operations (add, unlock, progress, query, clear)
+- Centralized restore sequence preventing ordering bugs on save/load
 
-**Multi-Waypoint Display**
-- Configurable display mode for waypoint indicators, compass, and automap: show closest only or show all tracked waypoints
-- Separate CVars for on-screen/compass (`vuos_waypoint_multi_mode`) and automap (`vuos_automap_multi_mode`)
+**Auto-Tracking**
+- 7 tracking types: manual, kills, damage dealt, damage taken, secrets, items, custom events
+- Class-targeted tracking for kills and damage (optional targetClass filter, replacement-aware)
+- Skill-level filtering with min/max range per achievement
+- Cumulative or per-map progress modes
 
-### v0.2.0 (January 2026)
+**Persistence**
+- nosave CVar persistence across game sessions via player INI file
+- Base64+ROT encoding for light obfuscation (toggleable)
+- 4-CVar split for achievement data + 4 for unlock map names (60 achievement capacity)
+- Auto-detect encoding on deserialize (prevents corruption if encoding toggled)
 
-**Architecture Overhaul**
-- Complete rewrite from Thinker-based to EventHandler-based objective storage
-- Added `VUOS_` namespace prefix to all classes for mod compatibility
-- Separated rendering into dedicated `VUOS_ObjectiveRenderer` class
-- Replaced `UniversalObjective` (Thinker) with `VUOS_ObjectiveData` (plain class)
-- Merged `ObjectiveFadeHandler_Optional` into `ObjectiveRenderer` (pickup fade now built-in)
-- Hub persistence via EventHandler serialization (objectives survive map changes)
-- ACS bridge rewritten to use `ScriptCall` instead of `ConsoleCommand`
-- Multiplayer-safe architecture: per-player distance caching, journal cursors, sound on all players, play-scope avoids `consoleplayer`
+**Notifications**
+- Toast popup system with FIFO queue for multiple unlocks
+- 6 positions with X/Y offset adjustment
+- 3 animation types: slide (vertical/horizontal), fade, none
+- SmoothStep easing, dual border layers, icon support
+- Procedural or textured rendering style
+- 4 selectable unlock sounds
+- Stale notification cleanup on save load
 
-**New Objective Features**
-- Primary and secondary objective categories with separate colored headers
-- Objective failure support (`Fail()`, `FailObjective()`)
-- Inverse objectives — auto-fail when target count reached instead of completing
-- Timed objectives with configurable countdown and auto-fail
-- Skill-level filtering (min/max skill per objective)
-- Required objectives with two-mode exit blocking (warning or true ACS-based blocking)
-- Event callbacks: `OnObjectiveComplete`, `OnObjectiveFail`, `OnObjectiveActivate`, `OnObjectiveReset`, `OnAllRequiredComplete`
-- `OnAllRequiredComplete` fires when the last required objective on the current map is completed
-- Failed objectives no longer permanently block map exit
-- Objective tracking toggle (per-objective, controlled via journal cursor)
-- `SetHidden`, `ResetObjective`, `RemoveObjective` methods
-- `AddPrimaryObjective` / `AddSecondaryObjective` convenience methods
-- `AddPrimaryCollectObjective` / `AddSecondaryCollectObjective` convenience methods for inventory-polled collect objectives
-- Expanded query API: `Exists`, `IsComplete`, `IsActive`, `HasFailed`, `GetProgress`, `GetMaxProgress`
+**Achievement Menu**
+- OptionMenu subclass with category grouping
+- Filter by all/unlocked/locked
+- Hidden achievement toggle (shows as "???")
+- Unlock timestamps and progress counters
+- 7 customizable colors (26 named color options each)
 
-**Navigation & Spatial Features**
-- Waypoint system — objectives can have 3D world positions (`SetWaypoint` / `ClearWaypoint`)
-- Compass ribbon — horizontal bar with cardinal directions and waypoint diamonds
-- On-screen 3D waypoint indicators with world-to-screen projection and off-screen arrows
-- Automap markers (X or numbered 1-9) for waypoint objectives
-- Automap legend overlay showing active objectives
-- Distance display on HUD, compass, and waypoint indicators (map units or meters)
-- Configurable compass bearing interval (15, 30, 60, or 90 degrees)
+**Cheat Detection**
+- Detects noclip, god mode, and buddha mode
+- Invalidates cheat-protected in-progress achievements
+- Sticky detection (stays active for rest of session)
+- Toggleable via CVar
 
-**UI & Customization**
-- Full options menu (`MENUDEF`) under Options > Universal Objectives
-- Journal screen with cursor navigation (Up/Down) and tracking toggle (Enter/Use)
-- HUD position cycling across 4 corners with fine-tune X/Y offsets
-- 44 CVars for colors, positions, scales, opacity, styles, and behavior
-- Configurable notification duration and center/console display options
-- Procedural or textured rendering styles for compass and waypoint indicators
-- Customizable colors for headers, objective states, notifications, and distance text
-- Debug mode CVar (`obj_debug`) for development/troubleshooting
+**Settings & Customization**
+- Full options menu under Options > Universal Achievements
+- 32 CVars for toast, sound, colors, menu, and system settings
+- Non-destructive MENUDEF (AddOptionMenu for mod compatibility)
 
-**Keybinds**
-- `P` — Cycle HUD position
-- `I` — Cycle waypoint indicator mode (Always On / Off / Toggle with HUD)
-- `C` — Toggle compass ribbon
-- `obj_help` console command added
+**Console Commands**
+- ach_list, ach_help, ach_debug, ach_clear_all, ach_unlock_all
+- Index-based netevent commands for individual achievement operations
+- Host-only gating for destructive/debug commands in multiplayer
+
+**ACS Bridge**
+- 10 ScriptCall wrapper scripts mirroring VUOS bridge pattern
+- Full API: unlock, progress, query, clear, counts
 
 **Compatibility**
-- Cynic Games Minimap bridge with runtime auto-detection (zero overhead when not loaded)
-- All keybinds rebindable under Options > Customize Controls > Objectives
-
-**ACS Bridge Additions**
-- `CheckObjectivesAndExit` — True exit blocking script
-- `FailObjective` — Fail an objective from ACS
-- `IncrementObjective` — Increment progress by 1
-- `SetObjectiveHidden` — Show/hide objectives
-- `ResetObjective` — Reset completed/failed objectives
-- `SetObjectiveWaypoint` — Set waypoint position from map editor
-- `obj_complete_all` — Complete all active objectives
-
-### v0.1.0 (December 2025)
-
-- Initial release
-- Thinker-based objective system with auto-tracked kill and destroy types
-- HUD mode and full objectives screen
-- Pickup fade handler (optional add-on)
-- Console commands for testing
-- ACS bridge for ZScript interop
-- Basic API: `Add`, `UpdateProgress`, `Complete`
+- Runs alongside VUOS with no conflicts (Order 10 vs Order 0)
+- All keybinds rebindable under Options > Customize Controls > Achievements

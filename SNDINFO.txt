@@ -1,0 +1,8 @@
+// ============================================================================
+// VUAS - Vortex's Universal Achievement System - Sound Definitions
+// ============================================================================
+
+vuas/unlock1		"Sounds/achievement_unlock1.ogg"
+vuas/unlock2		"Sounds/achievement_unlock2.ogg"
+vuas/unlock3		"Sounds/achievement_unlock3.ogg"
+vuas/unlock4		"Sounds/achievement_unlock4.ogg"

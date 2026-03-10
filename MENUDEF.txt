@@ -1,5 +1,5 @@
 // ============================================================================
-// Universal Objectives System - Settings Menu
+// VUAS - Vortex's Universal Achievement System - Settings Menu
 // ============================================================================
 // Uses AddOptionMenu to non-destructively add to the Options menu
 // so this mod plays nicely alongside other mods.
@@ -7,17 +7,60 @@
 AddOptionMenu "OptionsMenu"
 {
 	StaticText ""
-	Submenu "Universal Objectives", "UniversalObjectivesMenu"
+	Submenu "Universal Achievements", "UniversalAchievementsMenu"
 }
 
 AddOptionMenu "OptionsMenuSimple"
 {
 	StaticText ""
-	Submenu "Universal Objectives", "UniversalObjectivesMenu"
+	Submenu "Universal Achievements", "UniversalAchievementsMenu"
 }
 
-// Color name lookup for Font.CR_ indices
-OptionValue "ObjColorValues"
+OptionValue "AchToastPositionValues"
+{
+	0, "Top-Right"
+	1, "Top-Left"
+	2, "Bottom-Right"
+	3, "Bottom-Left"
+	4, "Top-Center"
+	5, "Bottom-Center"
+}
+
+OptionValue "AchToastAnimationValues"
+{
+	0, "None"
+	1, "Slide"
+	2, "Fade"
+}
+
+OptionValue "AchToastSlideEdgeValues"
+{
+	0, "Vertical"
+	1, "Horizontal"
+}
+
+OptionValue "AchToastStyleValues"
+{
+	0, "Procedural"
+	1, "Textured"
+}
+
+OptionValue "AchSoundChoiceValues"
+{
+	0, "Sound 1"
+	1, "Sound 2"
+	2, "Sound 3"
+	3, "Sound 4"
+}
+
+OptionValue "AchMenuFilterValues"
+{
+	0, "All"
+	1, "Unlocked Only"
+	2, "Locked Only"
+}
+
+OptionValue "AchColorValues"
 {
 	0, "Brick"
 	1, "Tan"
@@ -47,198 +90,72 @@ OptionValue "ObjColorValues"
 	25, "Teal"
 }
 
-OptionMenu "UniversalObjectivesMenu"
+// ============================================================================
+// Achievement Browse Menu (dynamically populated by VUAS_AchievementBrowseMenu)
+// ============================================================================
+OptionMenu "VUASAchievementBrowse"
 {
-	Title "Universal Objectives Settings"
-	
-	// ---- Auto-Generate Objectives ----
-	StaticText "Auto-Generate Objectives (Applied After Closing Menu)", 1
-	Option "Auto Objectives", "vuos_auto_enabled", "OnOff"
-	Option "Keys", "vuos_auto_keys", "ObjAutoCategoryValues"
-	Option "Puzzle Items", "vuos_auto_puzzleitems", "ObjAutoCategoryValues"
-	Option "Bosses", "vuos_auto_bosses", "ObjAutoCategoryValues"
-	Option "Exit", "vuos_auto_exit", "ObjAutoCategoryValues"
-	Option "Secret Exit", "vuos_auto_secretexit", "ObjAutoCategoryValues"
-	Option "Kills", "vuos_auto_kills", "ObjAutoCategoryValues"
-	Option "Kill Count Mode", "vuos_auto_kill_mode", "ObjAutoKillModeValues"
-	Option "Secrets", "vuos_auto_secrets", "ObjAutoCategoryValues"
-	Option "Show Secret Waypoints", "vuos_auto_secret_waypoints", "OnOff"
-	Option "Auto Waypoints", "vuos_auto_waypoints", "OnOff"
-	Option "Load Notification", "vuos_auto_notify", "OnOff"
-
-	StaticText ""
-
-	// ---- HUD Settings ----
-	StaticText "HUD Settings", 1
-	Option "Show HUD Objectives", "obj_hud_show", "OnOff"
-	Option "Show Untracked Objectives", "obj_hud_show_untracked", "OnOff"
-	Option "HUD Position", "obj_hud_position", "ObjHudPositionValues"
-	Option "Show Distance to Objectives", "obj_show_distance", "OnOff"
-	Option "Distance Text Color", "obj_color_distance", "ObjColorValues"
-	Slider "HUD Scale", "obj_hud_scale", 0.5, 2.0, 0.05, 2
-	Slider "HUD X Adjustment", "obj_hud_offset_x", -400, 400, 5, 0
-	Slider "HUD Y Adjustment", "obj_hud_offset_y", -300, 300, 5, 0
-
-	StaticText ""
-
-	// ---- Compass Ribbon Settings ----
-	StaticText "Compass Ribbon", 1
-	Option "Show Compass", "obj_compass_show", "OnOff"
-	Option "Compass Style", "obj_compass_style", "ObjCompassStyleValues"
-	Option "Show Distance on Compass", "obj_compass_show_distance", "OnOff"
-	Option "Show Bearing Numbers", "obj_compass_show_bearing", "OnOff"
-	Option "Bearing Interval", "obj_compass_bearing_interval", "ObjBearingIntervalValues"
-	Slider "Distance Text Scale", "obj_compass_text_scale", 0.5, 3.0, 0.05, 2
-	Slider "Compass Opacity", "obj_compass_opacity", 0.1, 1.0, 0.05, 2
-	Slider "Compass Scale", "obj_compass_scale", 0.5, 2.0, 0.05, 2
-	Slider "Compass FOV (degrees)", "obj_compass_fov", 45, 360, 15, 0
-	Slider "Compass X Adjustment", "obj_compass_offset_x", -300, 300, 5, 0
-	Slider "Compass Y Adjustment", "obj_compass_offset_y", -100, 200, 5, 0
-
-	StaticText ""
-
-	// ---- On-Screen Waypoint Indicators ----
-	StaticText "Waypoint Indicators", 1
-	Option "Waypoint Indicators", "obj_waypoint_mode", "ObjWaypointModeValues"
-	Option "Waypoint Style", "obj_waypoint_style", "ObjWaypointStyleValues"
-	Option "Multi-Waypoint Display", "vuos_waypoint_multi_mode", "ObjMultiWaypointValues"
-	Slider "Indicator Scale", "obj_waypoint_scale", 0.25, 3.0, 0.25, 2
-	Slider "Distance Text Scale", "obj_waypoint_text_scale", 0.5, 3.0, 0.25, 2
-	Slider "Max Display Distance (0=always)", "obj_waypoint_max_distance", 0, 500, 10, 0
-
-	StaticText ""
-
-	// ---- Journal Settings ----
-	StaticText "Journal Settings", 1
-	Slider "Journal Scale", "obj_journal_scale", 0.5, 1.5, 0.05, 2
-	Slider "Journal X Adjustment", "obj_journal_offset_x", -400, 400, 5, 0
-	Slider "Journal Y Adjustment", "obj_journal_offset_y", -300, 300, 5, 0
-
-	StaticText ""
-
-	// ---- Notification Timing ----
-	StaticText "Notifications", 1
-	Slider "Notification Duration (tics)", "obj_notification_duration", 35, 350, 5, 0
-	Option "Show in Center", "obj_center_notifications", "OnOff"
-	Option "Log to Console", "obj_console_notifications", "OnOff"
-	Option "Dim on Pickup", "obj_pickup_fade", "OnOff"
-
-	StaticText ""
-
-	// ---- Distance / Waypoint Settings ----
-	StaticText "Distance Display", 1
-	Option "Distance Units", "obj_distance_units", "ObjDistanceUnitValues"
-
-	StaticText ""
-
-	// ---- Automap Settings ----
-	StaticText "Automap (Applied After Closing Menu)", 1
-	Option "Show Waypoint Markers", "obj_automap_markers", "OnOff"
-	Option "Marker Style", "obj_automap_marker_style", "ObjAutomapMarkerStyleValues"
-
-	StaticText ""
-
-	Option "Multi-Waypoint Display", "vuos_automap_multi_mode", "ObjMultiWaypointValues"
-
-	StaticText ""
-
-	// ---- Automap Legend ----
-	StaticText "Automap Legend", 1
-	Option "Show Objective Legend", "obj_automap_legend", "OnOff"
-	Slider "Legend Scale", "obj_automap_legend_scale", 0.5, 2.0, 0.05, 2
-	Option "Show Completed/Failed", "obj_automap_show_completed", "OnOff"
-
-	StaticText ""
-
-	// ---- Header Colors ----
-	StaticText "Header Colors", 1
-	Option "Primary Header", "obj_color_primary_header", "ObjColorValues"
-	Option "Secondary Header", "obj_color_secondary_header", "ObjColorValues"
-	
-	StaticText ""
-	
-	// ---- Objective State Colors ----
-	StaticText "Objective Colors", 1
-	Option "Active / Incomplete", "obj_color_active", "ObjColorValues"
-	Option "Completed", "obj_color_completed", "ObjColorValues"
-	Option "Failed", "obj_color_failed", "ObjColorValues"
-	
-	StaticText ""
-	
-	// ---- Center Notification Colors ----
-	StaticText "Notification Colors", 1
-	Option "Complete Notification", "obj_color_complete_notify", "ObjColorValues"
-	Option "Fail Notification", "obj_color_fail_notify", "ObjColorValues"
-
-	StaticText ""
-
-	// ---- Debug ----
-	StaticText "Debug", 1
-	Option "Debug Console Output", "obj_debug", "OnOff"
+	Class "VUAS_AchievementBrowseMenu"
+	Title "Achievements"
+	// Items populated dynamically by VUAS_AchievementBrowseMenu.Init()
 }
 
-OptionValue "ObjHudPositionValues"
+OptionMenu "UniversalAchievementsMenu"
 {
-	0, "Top-Left"
-	1, "Top-Right"
-	2, "Bottom-Left"
-	3, "Bottom-Right"
-}
+	Title "Universal Achievements Settings"
 
-OptionValue "ObjDistanceUnitValues"
-{
-	0, "Map Units"
-	1, "Meters"
-}
+	// ---- Toast Notification Settings ----
+	StaticText "Toast Notifications", 1
+	Option "Show Toast Popups", "ach_toast_enabled", "OnOff"
+	Option "Toast Position", "ach_toast_position", "AchToastPositionValues"
+	Option "Animation", "ach_toast_animation", "AchToastAnimationValues"
+	Option "Slide Direction", "ach_toast_slide_edge", "AchToastSlideEdgeValues"
+	Option "Toast Style", "ach_toast_style", "AchToastStyleValues"
+	Slider "Toast Scale", "ach_toast_scale", 0.5, 2.0, 0.05, 2
+	Slider "Toast Opacity", "ach_toast_opacity", 0.1, 1.0, 0.05, 2
+	Slider "Toast Duration (tics)", "ach_toast_duration", 35, 350, 5, 0
+	Slider "Toast X Adjustment", "ach_toast_offset_x", -200, 200, 5, 0
+	Slider "Toast Y Adjustment", "ach_toast_offset_y", -200, 200, 5, 0
 
-OptionValue "ObjCompassStyleValues"
-{
-	0, "Procedural"
-	1, "Textured"
-}
+	StaticText ""
 
-OptionValue "ObjWaypointStyleValues"
-{
-	0, "Procedural"
-	1, "Textured"
-}
+	// ---- Sound ----
+	StaticText "Sound", 1
+	Option "Play Unlock Sound", "ach_sound_enabled", "OnOff"
+	Option "Unlock Sound", "ach_sound_choice", "AchSoundChoiceValues"
 
-OptionValue "ObjAutomapMarkerStyleValues"
-{
-	0, "X Markers"
-	1, "Numbered"
-}
+	StaticText ""
 
-OptionValue "ObjWaypointModeValues"
-{
-	0, "Always On"
-	1, "Always Off"
-	2, "Toggle with Objectives HUD"
-}
+	// ---- Colors ----
+	StaticText "Colors", 1
+	Option "Unlocked Color", "ach_color_unlocked", "AchColorValues"
+	Option "Locked Color", "ach_color_locked", "AchColorValues"
+	Option "Title Color", "ach_color_title", "AchColorValues"
+	Option "Description Color", "ach_color_description", "AchColorValues"
+	Option "Border Accent Color", "ach_color_border", "AchColorValues"
+	Option "Border Inner Color", "ach_color_border_inner", "AchColorValues"
+	Option "Progress Color", "ach_color_progress", "AchColorValues"
 
-OptionValue "ObjMultiWaypointValues"
-{
-	0, "Closest"
-	1, "All"
-}
+	StaticText ""
 
-OptionValue "ObjAutoCategoryValues"
-{
-	0, "Off"
-	1, "Primary"
-	2, "Secondary"
-}
+	// ---- Menu Settings ----
+	StaticText "Achievement Menu", 1
+	Submenu "Browse Achievements", "VUASAchievementBrowse"
+	Option "Show Hidden Achievements", "ach_show_hidden", "OnOff"
+	Option "Filter", "ach_menu_filter", "AchMenuFilterValues"
 
-OptionValue "ObjAutoKillModeValues"
-{
-	0, "Fixed"
-	1, "Dynamic"
-}
+	StaticText ""
 
-OptionValue "ObjBearingIntervalValues"
-{
-	15, "15"
-	30, "30"
-	60, "60"
-	90, "90"
+	// ---- Test & Clear ----
+	StaticText "Test & Clear", 1
+	Command "Show Test Achievement", "netevent vuas_test_toast"
+	SafeCommand "Clear All Achievements", "netevent ach_clear_all"
+
+	StaticText ""
+
+	// ---- System ----
+	StaticText "System", 1
+	Option "Encode Save Data", "vuas_encode_data", "OnOff"
+	Option "Cheat Detection", "vuas_cheat_detection", "OnOff"
+	Option "Debug Console Output", "vuas_debug", "OnOff"
 }

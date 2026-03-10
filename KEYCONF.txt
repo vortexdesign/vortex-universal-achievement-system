@@ -1,30 +1,18 @@
 // ============================================================================
-// Objective System Controls
+// VUAS - Vortex's Universal Achievement System - Key Configuration
 // ============================================================================
-addkeysection "Objectives" obj_controls
-addmenukey "Toggle Objectives Screen" toggle_objectives
-alias toggle_objectives "netevent toggle_objectives"
-defaultbind j toggle_objectives
-addmenukey "Toggle Objectives HUD" toggle_objectives_hud
-alias toggle_objectives_hud "netevent toggle_objectives_hud"
-defaultbind o toggle_objectives_hud
-addmenukey "Cycle HUD Position" cycle_hud_position
-alias cycle_hud_position "netevent cycle_hud_position"
-defaultbind p cycle_hud_position
-addmenukey "Toggle Waypoints" cycle_waypoint_mode
-alias cycle_waypoint_mode "netevent cycle_waypoint_mode"
-defaultbind i cycle_waypoint_mode
-addmenukey "Toggle Compass" toggle_compass
-alias toggle_compass "netevent toggle_compass"
-defaultbind c toggle_compass
+// Aliases bridge console commands to netevents handled by AchievementCommands.zs.
+// Type any alias name in the console to execute the command.
+// ============================================================================
 
-// ============================================================================
-// Developer/Debug Commands (Console only)
-// ============================================================================
-alias obj_help "netevent obj_help"
-alias obj_list "netevent obj_list"
-alias obj_clear "netevent obj_clear"
-alias obj_complete_all "netevent obj_complete_all"
-alias obj_test "netevent obj_test"
-alias obj_complete_test "netevent obj_complete_test"
-alias vuos_auto_list "netevent vuos_auto_list"
+// --- Console Commands (no args) ---
+alias ach_help "netevent ach_help"
+alias ach_list "netevent ach_list"
+alias ach_debug "netevent ach_debug"
+alias ach_clear_all "netevent ach_clear_all"
+alias ach_unlock_all "netevent ach_unlock_all"
+
+// --- Keybind Section ---
+addkeysection "Achievements" ach_controls
+addmenukey "Achievement Menu" ach_open_menu
+alias ach_open_menu "openmenu VUASAchievementBrowse"

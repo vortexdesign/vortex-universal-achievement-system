@@ -1,16 +1,17 @@
 version "4.2.0"
 
 // ============================================================================
-// Reference Objective ZScript Classes and Methods
+// Vortex's Universal Achievement System (VUAS)
 // ============================================================================
-#include "zscript/objectives/UniversalObjectiveDataAndContainer.zs"
-#include "zscript/objectives/UniversalObjectiveHandler.zs"
-#include "zscript/objectives/ObjectiveCommands.zs"
-#include "zscript/objectives/ObjectiveSetup.zs"
-#include "zscript/objectives/ObjectiveCompass.zs"
-#include "zscript/objectives/ObjectiveWaypoints.zs"
-#include "zscript/objectives/ObjectiveRenderer.zs"
-#include "zscript/objectives/ObjectiveAutomapOverlay.zs"
-#include "zscript/objectives/ObjectiveAutomap.zs"
-#include "zscript/objectives/ObjectiveMinimapBridge.zs" // Optional for use with Cynic Games Minimap mod
-#include "zscript/objectives/VUOS_AutoObjectives.zs"   // Optional auto-objective generator for players who aren't modders
+// Include order matters: Data first, then handler, then supporting classes.
+// AchievementData.zs must be first (defines VUAS_AchievementData used by all).
+// Persistence (encode/decode/serialize) lives directly on the handler (play scope).
+// ============================================================================
+#include "ZSCRIPT/Achievements/AchievementData.zs"
+#include "ZSCRIPT/Achievements/AchievementHandler.zs"
+#include "ZSCRIPT/Achievements/AchievementPersistentTracker.zs"
+#include "ZSCRIPT/Achievements/AchievementSetup.zs"
+#include "ZSCRIPT/Achievements/AchievementCommands.zs"
+#include "ZSCRIPT/Achievements/AchievementNotification.zs"
+#include "ZSCRIPT/Achievements/AchievementRenderer.zs"
+#include "ZSCRIPT/Achievements/AchievementMenu.zs"

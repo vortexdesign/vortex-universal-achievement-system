@@ -1,11 +1,15 @@
 // ============================================================================
-// Reference Objective Events
+// VUAS - Vortex's Universal Achievement System - Handler Registration
 // ============================================================================
-gameinfo
+// Registers all VUAS event handlers with GZDoom.
+// Order matters: Handler and Commands are StaticEventHandlers (session lifetime),
+// PersistentTracker and Renderer are EventHandlers (per-map, serialize with saves).
+//
+// To use your own achievement definitions, create a subclass of
+// VUAS_AchievementSetup and replace the entry below with your class name.
+// ============================================================================
+
+GameInfo
 {
-	AddEventHandlers = "VUOS_ObjectiveSetup"
-	AddEventHandlers = "VUOS_AutoObjectives"
-	AddEventHandlers = "VUOS_ObjectiveRenderer"
-	AddEventHandlers = "VUOS_ObjectiveCommands"
-	AddEventHandlers = "VUOS_ObjectiveMinimapBridge" // Optional for use with Cynic Games Minimap mod
+    AddEventHandlers = "VUAS_AchievementHandler", "VUAS_PersistentTracker", "VUAS_AchievementRenderer", "VUAS_AchievementCommands", "VUAS_AchievementSetup"
 }

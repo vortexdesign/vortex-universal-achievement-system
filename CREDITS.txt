@@ -1,18 +1,23 @@
-Vortex's Universal Objective System (VUOS)
+Vortex's Universal Achievement System (VUAS)
 Copyright (c) 2026 Vortex
+
+VUAS references architectural patterns from Blade of Agony (dual-handler persistence, SystemTime relay, cheat detection, icon dimming) and Stupid Achievements (OptionMenu subclass, notification queue, replacement-aware matching) but all implementations are original except BoA's Base64+ROT encode/decode functions which were directly adapted.
 
 Blade of Agony
 https://boa.realm667.com/
 
-Hellscape Navigator
-https://github.com/mmaulwurff/hellscape-navigator
+Stupid Achievements
+https://github.com/mmaulwurff/stupid-achievements
 
-Cynic Games Minimap
-https://www.moddb.com/mods/minimap-v10
+GZ_Goalz
+https://github.com/Lewisk3/GZ_Goalz
+
+GZAchievementsPOC
+https://forum.zdoom.org/viewtopic.php?t=75502
 
 License:
 - Code is licensed under the MIT License (see LICENSE file).
 
 Credit (appreciated, not required):
 If you use this in your mod/project, please include a credit like:
-"Universal Objective System by Vortex"
+"Universal Achievement System by Vortex"

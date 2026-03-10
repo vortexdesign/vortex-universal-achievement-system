@@ -1,4 +1,4 @@
 // ============================================================================
-// Reference Objective ACS Bridge
+// Reference Achievement ACS Bridge
 // ============================================================================
-OBJECTIVES_BRIDGE_ACS
+ACHIEVEMENTS_BRIDGE_ACS
