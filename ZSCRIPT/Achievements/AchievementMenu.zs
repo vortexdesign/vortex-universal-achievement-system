@@ -15,9 +15,66 @@
 // ============================================================================
 class VUAS_AchievementBrowseMenu : OptionMenu
 {
+    // Lowercase ASCII code of the key that toggles this menu.
+    // Resolved in Init() by converting the bound scancode to ASCII via QWERTY map.
+    int toggleAsciiCode;
+
+    // Convert a keyboard scancode (used by Bindings) to a lowercase ASCII code
+    // (used by OnUIEvent.KeyChar). QWERTY layout mapping.
+    private static int ScancodeToAscii(int sc)
+    {
+        // Number row: scancodes 2-11
+        if (sc >= 2 && sc <= 10) return sc + 47; // 2+47=49='1' ... 10+47=57='9'
+        if (sc == 11) return 48; // '0'
+
+        // Top letter row: scancodes 16-25 = qwertyuiop
+        String row1 = "qwertyuiop";
+        if (sc >= 16 && sc <= 25) return row1.ByteAt(sc - 16);
+
+        // Home row: scancodes 30-38 = asdfghjkl
+        String row2 = "asdfghjkl";
+        if (sc >= 30 && sc <= 38) return row2.ByteAt(sc - 30);
+
+        // Bottom row: scancodes 44-50 = zxcvbnm
+        String row3 = "zxcvbnm";
+        if (sc >= 44 && sc <= 50) return row3.ByteAt(sc - 44);
+
+        if (sc == 57) return 32; // space
+        return -1;
+    }
+
+    // Toggle support: pressing the same key that opened the menu closes it.
+    // Bindings uses keyboard scancodes (e.g. 50=M) but OnUIEvent.KeyChar gives
+    // ASCII codes (e.g. 77='M'). Init() bridges the gap by converting the bound
+    // scancode to ASCII once, so OnUIEvent just does a simple int comparison.
+    override bool OnUIEvent(UIEvent ev)
+    {
+        if (ev.Type == UIEvent.Type_KeyDown && toggleAsciiCode >= 0)
+        {
+            int keyCode = ev.KeyChar;
+            if (keyCode >= 65 && keyCode <= 90)
+                keyCode += 32;
+
+            if (keyCode == toggleAsciiCode)
+            {
+                Close();
+                return true;
+            }
+        }
+        return Super.OnUIEvent(ev);
+    }
+
     override void Init(Menu parent, OptionMenuDescriptor desc)
     {
         Super.Init(parent, desc);
+
+        // Find the scancode bound to our toggle command, convert to ASCII.
+        // GetKeysForCommand returns up to 2 scancodes (primary + secondary bind).
+        toggleAsciiCode = -1;
+        int k1, k2;
+        [k1, k2] = Bindings.GetKeysForCommand("ach_open_menu");
+        if (k1 > 0)
+            toggleAsciiCode = ScancodeToAscii(k1);
 
         // Clear any existing items (menu re-opens should refresh)
         mDesc.mItems.Clear();
